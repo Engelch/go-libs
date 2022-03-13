@@ -113,11 +113,11 @@ func ParsePublicKey(der []byte) (*rsa.PublicKey, error) {
 	if block == nil || block.Type != "PUBLIC KEY" {
 		return nil, errors.New(CurrentFunctionName() + ":failed to decode PEM block containing public key")
 	}
-	pub, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		return nil, errors.New(CurrentFunctionName() + ":failed to parse PEM block:" + err.Error())
 	}
-	return pub, nil
+	return pub.(*rsa.PublicKey), nil
 }
 
 // LoadPublicKey load a PEM-encoded RSA public key from a file

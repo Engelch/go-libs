@@ -1,4 +1,5 @@
 # go_libs
+
 Go elements often included. This is the successor of the previous debugErrorCE package.
 
 ## Crypt
@@ -30,4 +31,3 @@ $ tlsRsaPrvFingerprint key1
 $ tlsRsaPubFingerprint key1.pub 
 5d30617645c9cf77d285e4ffd511c407f3aefaa7b2c45ecce6ceba73ccddd27c
 ```
-
