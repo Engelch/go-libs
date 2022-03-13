@@ -66,6 +66,7 @@ func VerifyByteArray(key *rsa.PublicKey, digest []byte, msg string) error {
 		return errors.New(CurrentFunctionName() + ":Error, digest is nil")
 	}
 	plaintestDigest := Sha256bytes2bytes([]byte(msg))
+	CondDebugln(CurrentFunctionName() + ", recalculated digest for msg: " + string(plaintestDigest))
 	return rsa.VerifyPSS(key, crypto.SHA256, plaintestDigest, digest, &opts)
 }
 
