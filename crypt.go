@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -28,8 +29,8 @@ func Sha256bytes2bytes(bytes []byte) []byte {
 	return msgHash.Sum(nil)
 }
 
-// SignResponse returns a signature for the given digest or returns an error
-func SignResponse(key *rsa.PrivateKey, digest []byte) ([]byte, error) {
+// SignByteArray returns a signature for the given digest or returns an error
+func SignByteArray(key *rsa.PrivateKey, digest []byte) ([]byte, error) {
 	var opts rsa.PSSOptions
 	opts.SaltLength = rsa.PSSSaltLengthAuto
 	if key == nil { // no signing
@@ -42,10 +43,47 @@ func SignResponse(key *rsa.PrivateKey, digest []byte) ([]byte, error) {
 	return signature, nil
 }
 
+// SignByteArray2Base64 signs a byte array by calling SignByteArray but returns the
+// signature as a base64-encoded string.
+func SignByteArray2Base64(key *rsa.PrivateKey, digest []byte) (string, error) {
+	sig, err := SignByteArray(key, digest)
+	if err != nil {
+		return "", errors.New(CurrentFunctionName() + ":" + err.Error())
+	}
+	return base64.StdEncoding.EncodeToString(sig), nil
+}
+
+// VerifyByteArray verifies a digital signature (digest). If no error is returned,
+// then the verification was successful. Furthermore, it recalculates the digest of the
+// message. It should result in the same digest as the digitally signed one.
+func VerifyByteArray(key *rsa.PublicKey, digest []byte, msg string) error {
+	var opts rsa.PSSOptions
+	opts.SaltLength = rsa.PSSSaltLengthAuto
+	if key == nil {
+		return errors.New(CurrentFunctionName() + ":Error, public key is nil")
+	}
+	if digest == nil {
+		return errors.New(CurrentFunctionName() + ":Error, digest is nil")
+	}
+	plaintestDigest := Sha256bytes2bytes([]byte(msg))
+	return rsa.VerifyPSS(key, crypto.SHA256, plaintestDigest, digest, &opts)
+}
+
+// VerifyBase64String accepts a base64 encoded string as the signature.
+// It decodes the signature and calls VerifyByteArray.
+func VerifyBase64String(key *rsa.PublicKey, b64 string, msg string) error {
+	signatureByte, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return errors.New(CurrentFunctionName() + ":Error, decoding base64 string")
+	}
+	return VerifyByteArray(key, signatureByte, msg)
+}
+
 // =======================================================================================
 // = Key Loading and Signing
 
-// ParsePrivateKey load a PEM-encoded RSA private key from a buffer
+// ParsePrivateKey load a PEM-encoded RSA private key from a buffer. The function does not try
+// to read multiple keys from the byte array. Only the first PEM block is processed.
 func ParsePrivateKey(der []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(der)
 	if block == nil || block.Type != "RSA PRIVATE KEY" {
@@ -67,7 +105,29 @@ func LoadPrivateKey(filename string) (*rsa.PrivateKey, error) {
 	return ParsePrivateKey(buf)
 }
 
-// TODO LoadPublicKey
+// ParsePublicKey load a PEM-encoded RSA public key from a buffer. The function does not try
+// to read multiple keys from the byte array. Only the first PEM block is processed.
+func ParsePublicKey(der []byte) (*rsa.PublicKey, error) {
+	block, _ := pem.Decode(der)
+	if block == nil || block.Type != "PUBLIC KEY" {
+		return nil, errors.New(CurrentFunctionName() + ":failed to decode PEM block containing public key")
+	}
+	pub, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		return nil, errors.New(CurrentFunctionName() + ":failed to parse PEM block:" + err.Error())
+	}
+	return pub, nil
+}
+
+// LoadPublicKey load a PEM-encoded RSA public key from a file
+func LoadPublicKey(filename string) (*rsa.PublicKey, error) {
+	buf, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, errors.New(CurrentFunctionName() + ":reading file:" + err.Error())
+	}
+	return ParsePublicKey(buf)
+}
+
 // TODO VerifySignature
 // TODO EncryptAES256
 // TODO DecryptAES256
