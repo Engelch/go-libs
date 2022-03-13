@@ -12,6 +12,8 @@ import (
 	"os"
 )
 
+const bitSize = 4096 // RSA keysize
+
 // Sha256bytes2bytes converts a byte sequence into a SHA-256-based digest of it.
 // The output for this application is the same on the commadn line with:
 // curl -q localhost:8888 | jq -c .Data | tr -d '\n' | shasum -a256
@@ -104,7 +106,6 @@ func WritePublicKey(file *os.File, pubKey *rsa.PublicKey) error {
 
 // createRSAKeyPair2 creates the keypair and calls the functions to write the keys to the files
 func createRSAKeyPair2(privKeyFile *os.File, pubKeyFile *os.File) error {
-	const bitSize = 4096
 	privateKey, err := rsa.GenerateKey(rand.Reader, bitSize)
 	if err != nil {
 		return errors.New(CurrentFunctionName() + "key creation:" + err.Error())
@@ -118,9 +119,9 @@ func createRSAKeyPair2(privKeyFile *os.File, pubKeyFile *os.File) error {
 	return nil
 }
 
-// CreateRSAKeyPair checks if the 2 required files do not exist and can be created sucessfully. Then,
+// CreateRSAKeyPair2File checks if the 2 required files do not exist and can be created sucessfully. Then,
 // it transfers control to createKeyPairError2.
-func CreateRSAKeyPair(outfileName string) error {
+func CreateRSAKeyPair2File(outfileName string) error {
 	var privKeyFile *os.File
 	var pubKeyFile *os.File
 	var err error
@@ -142,6 +143,16 @@ func CreateRSAKeyPair(outfileName string) error {
 	defer privKeyFile.Close()
 	defer pubKeyFile.Close()
 	return createRSAKeyPair2(privKeyFile, pubKeyFile)
+}
+
+// CreateRSAKeyPair creates an RSA 4096-bit key-pair. This function makes only partly sense,
+// as the private key always contains the public key.
+func CreateRSAKeyPair() (*rsa.PrivateKey, *rsa.PublicKey, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, bitSize)
+	if err != nil {
+		return nil, nil, errors.New(CurrentFunctionName() + "key creation:" + err.Error())
+	}
+	return privateKey, &privateKey.PublicKey, nil
 }
 
 // EOF
