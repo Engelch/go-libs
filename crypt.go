@@ -29,8 +29,9 @@ func Sha256bytes2bytes(bytes []byte) []byte {
 	return msgHash.Sum(nil)
 }
 
-// SignByteArray returns a signature for the given digest or returns an error
-func SignByteArray(key *rsa.PrivateKey, digest []byte) ([]byte, error) {
+// func SignPSSByteArray(key *rsa.PrivateKey, digest []byte) ([]byte, error) {
+// returns a signature for the given digest or returns an error
+func SignPSSByteArray(key *rsa.PrivateKey, digest []byte) ([]byte, error) {
 	var opts rsa.PSSOptions
 	opts.SaltLength = rsa.PSSSaltLengthAuto
 	if key == nil { // no signing
@@ -43,20 +44,20 @@ func SignByteArray(key *rsa.PrivateKey, digest []byte) ([]byte, error) {
 	return signature, nil
 }
 
-// SignByteArray2Base64 signs a byte array by calling SignByteArray but returns the
+// SignPSSByteArray2Base64 signs a byte array by calling SignByteArray but returns the
 // signature as a base64-encoded string.
-func SignByteArray2Base64(key *rsa.PrivateKey, digest []byte) (string, error) {
-	sig, err := SignByteArray(key, digest)
+func SignPSSByteArray2Base64(key *rsa.PrivateKey, digest []byte) (string, error) {
+	sig, err := SignPSSByteArray(key, digest)
 	if err != nil {
 		return "", errors.New(CurrentFunctionName() + ":" + err.Error())
 	}
 	return base64.StdEncoding.EncodeToString(sig), nil
 }
 
-// VerifyByteArray verifies a digital signature (digest). If no error is returned,
+// VerifyPSSByteArray verifies a digital signature (digest). If no error is returned,
 // then the verification was successful. Furthermore, it recalculates the digest of the
 // message. It should result in the same digest as the digitally signed one.
-func VerifyByteArray(key *rsa.PublicKey, digest []byte, msg string) error {
+func VerifyPSSByteArray(key *rsa.PublicKey, digest []byte, msg string) error {
 	var opts rsa.PSSOptions
 	opts.SaltLength = rsa.PSSSaltLengthAuto
 	if key == nil {
@@ -70,14 +71,63 @@ func VerifyByteArray(key *rsa.PublicKey, digest []byte, msg string) error {
 	return rsa.VerifyPSS(key, crypto.SHA256, plaintestDigest, digest, &opts)
 }
 
-// VerifyBase64String accepts a base64 encoded string as the signature.
+// VerifyPSSBase64String accepts a base64 encoded string as the signature.
 // It decodes the signature and calls VerifyByteArray.
-func VerifyBase64String(key *rsa.PublicKey, b64 string, msg string) error {
+func VerifyPSSBase64String(key *rsa.PublicKey, b64 string, msg string) error {
 	signatureByte, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
 		return errors.New(CurrentFunctionName() + ":Error, decoding base64 string")
 	}
-	return VerifyByteArray(key, signatureByte, msg)
+	return VerifyPSSByteArray(key, signatureByte, msg)
+}
+
+// Sign115ByteArray returns a signature for the given digest or returns an error
+func Sign115ByteArray(key *rsa.PrivateKey, digest []byte) ([]byte, error) {
+	//var opts rsa.PSSOptions
+	//opts.SaltLength = rsa.PSSSaltLengthAuto
+	if key == nil { // no signing
+		return nil, nil
+	}
+	signature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, digest)
+	if err != nil {
+		return nil, errors.New(CurrentFunctionName() + ":" + err.Error())
+	}
+	return signature, nil
+}
+
+// SignByte115Array2Base64 signs a byte array by calling SignByteArray but returns the
+// signature as a base64-encoded string.
+func Sign115ByteArray2Base64(key *rsa.PrivateKey, digest []byte) (string, error) {
+	sig, err := Sign115ByteArray(key, digest)
+	if err != nil {
+		return "", errors.New(CurrentFunctionName() + ":" + err.Error())
+	}
+	return base64.StdEncoding.EncodeToString(sig), nil
+}
+
+// Verify115ByteArray verifies a digital signature (digest). If no error is returned,
+// then the verification was successful. Furthermore, it recalculates the digest of the
+// message. It should result in the same digest as the digitally signed one.
+func Verify115ByteArray(key *rsa.PublicKey, digest []byte, msg string) error {
+	if key == nil {
+		return errors.New(CurrentFunctionName() + ":Error, public key is nil")
+	}
+	if digest == nil {
+		return errors.New(CurrentFunctionName() + ":Error, digest is nil")
+	}
+	plaintestDigest := Sha256bytes2bytes([]byte(msg))
+	CondDebugln(CurrentFunctionName() + ", recalculated digest for msg: " + fmt.Sprintf("%x", plaintestDigest))
+	return rsa.VerifyPKCS1v15(key, crypto.SHA256, plaintestDigest, digest)
+}
+
+// Verify115Base64String accepts a base64 encoded string as the signature.
+// It decodes the signature and calls VerifyByteArray.
+func Verify115Base64String(key *rsa.PublicKey, b64 string, msg string) error {
+	signatureByte, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return errors.New(CurrentFunctionName() + ":Error, decoding base64 string")
+	}
+	return Verify115ByteArray(key, signatureByte, msg)
 }
 
 // =======================================================================================
