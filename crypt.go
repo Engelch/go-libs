@@ -198,7 +198,10 @@ func WritePrivateKey(file *os.File, privKey *rsa.PrivateKey) error {
 		Bytes: x509.MarshalPKCS1PrivateKey(privKey),
 	}
 	if err := pem.Encode(file, privateKey); err != nil {
-		return errors.New(CurrentFunctionName() + ":" + err.Error())
+		return errors.New(CurrentFunctionName() + ":pem encode+writeFile:" + err.Error())
+	}
+	if err := os.Chmod(file.Name(), 0600); err != nil {
+		return errors.New(CurrentFunctionName() + ":chmod:" + err.Error())
 	}
 	return nil
 }
